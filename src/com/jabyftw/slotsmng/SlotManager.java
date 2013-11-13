@@ -1,71 +1,92 @@
 package com.jabyftw.slotsmng;
 
-import java.io.File;
 import java.util.logging.Level;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerPreLoginEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class SlotManager extends JavaPlugin implements CommandExecutor {
-    int cVersion = 1;
-    private Config nConfig;
-    private File folder = new File("plugins" + File.separator + "RealTime");
-    
-    int maxPlayers;
+
+    public int maxPlayers;
 
     @Override
     public void onEnable() {
-        folder.mkdirs();
-        nConfig = new Config(this);
-        nConfig.createConfig();
-        setConfig();
-        
+        genConfig();
         getCommand("slotsmanager").setExecutor(this);
         getServer().getPluginManager().registerEvents(new LoginListener(this), this);
         getServer().getPluginManager().registerEvents(new PreLoginListener(this), this);
-        log("Running!", 0);
+        getLogger().log(Level.INFO, "Running!");
     }
 
     @Override
-    public void onDisable() {}
-    
-    void setConfig() {
-        FileConfiguration config = getConfig();
-        maxPlayers = config.getInt("config.invisiblePlayerLimit");
-        log("Configured!", 0);
+    public void onDisable() {
     }
-    
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if(sender.hasPermission("slotsmanager.change")) {
-            if(args.length == 0) {
-                sender.sendMessage(ChatColor.RED + "Usage: /slotsmanager (slots)");
-                return false;
-            }
+        if (args.length < 1) {
+            return false;
+        } else if (sender.hasPermission("slotsmanager.change")) {
             try {
                 maxPlayers = Integer.parseInt(args[0]);
-            } catch(NumberFormatException e) {
-                sender.sendMessage(ChatColor.RED + "The '/slotsmanager (SLOTS)' must be a number");
+                sender.sendMessage(ChatColor.BLUE + "Done! (;");
+                return true;
+            } catch (NumberFormatException e) {
                 return false;
             }
-            sender.sendMessage(ChatColor.BLUE + "Done! (;");
+        } else {
+            sender.sendMessage(ChatColor.RED + "You dont have permission!");
             return true;
         }
-        return false;
     }
-    
-    /*
-     * 0 - normal
-     * 1 - warning
-     * 2 - debug NOT NEEDED
-     */
-    void log(String msg, int mode) {
-        if(mode == 0)
-            this.getLogger().log(Level.INFO, msg);
-        else if(mode == 1)
-            this.getLogger().log(Level.WARNING, msg);
+
+    private void genConfig() {
+        FileConfiguration config = getConfig();
+        config.addDefault("config.invisibleMaxPlayersAllowed", 32);
+        config.options().copyDefaults(true);
+        saveConfig();
+        reloadConfig();
+        maxPlayers = config.getInt("config.invisibleMaxPlayersAllowed");
     }
+
+    private class PreLoginListener implements Listener {
+
+        private final SlotManager plugin;
+
+        PreLoginListener(SlotManager plugin) {
+            this.plugin = plugin;
+        }
+
+        @EventHandler(priority = EventPriority.HIGHEST)
+        public void onLogin(PlayerPreLoginEvent e) {
+            if (e.getResult() == PlayerPreLoginEvent.Result.KICK_FULL && plugin.maxPlayers < plugin.getServer().getOnlinePlayers().length) {
+                e.allow();
+            }
+        }
+    }
+
+    private class LoginListener implements Listener {
+
+        private final SlotManager plugin;
+
+        LoginListener(SlotManager plugin) {
+            this.plugin = plugin;
+        }
+
+        @EventHandler(priority = EventPriority.HIGHEST)
+        public void onLogin(PlayerLoginEvent e) {
+            if (e.getResult() == PlayerLoginEvent.Result.KICK_FULL && plugin.maxPlayers < plugin.getServer().getOnlinePlayers().length) {
+                e.allow();
+            }
+        }
+    }
+
 }

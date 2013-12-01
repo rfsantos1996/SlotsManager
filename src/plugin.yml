@@ -1,5 +1,5 @@
 name: SlotsManager
-version: 0.2
+version: 0.3
 author: rfsantos1996
 main: com.jabyftw.slotsmng.SlotManager
 description: Manage your slots
@@ -10,4 +10,4 @@ permissions:
 commands:
    slotsmanager:
       description: This is the main command for slot managing.
-      usage: /slotsmanager <slots>
+      usage: /slotsmanager <number of slots>

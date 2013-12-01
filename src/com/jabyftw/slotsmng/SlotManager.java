@@ -5,7 +5,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -13,16 +12,19 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerPreLoginEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class SlotManager extends JavaPlugin implements CommandExecutor {
+public class SlotManager extends JavaPlugin implements CommandExecutor, Listener {
 
-    public int maxPlayers;
+    private int maxPlayers;
 
     @Override
     public void onEnable() {
-        genConfig();
+        getConfig().addDefault("config.invisibleMaxPlayersAllowed", 32);
+        getConfig().options().copyDefaults(true);
+        saveConfig();
+        reloadConfig();
+        maxPlayers = getConfig().getInt("config.invisibleMaxPlayersAllowed");
         getCommand("slotsmanager").setExecutor(this);
-        getServer().getPluginManager().registerEvents(new LoginListener(this), this);
-        getServer().getPluginManager().registerEvents(new PreLoginListener(this), this);
+        getServer().getPluginManager().registerEvents(this, this);
         getLogger().log(Level.INFO, "Running!");
     }
 
@@ -48,45 +50,17 @@ public class SlotManager extends JavaPlugin implements CommandExecutor {
         }
     }
 
-    private void genConfig() {
-        FileConfiguration config = getConfig();
-        config.addDefault("config.invisibleMaxPlayersAllowed", 32);
-        config.options().copyDefaults(true);
-        saveConfig();
-        reloadConfig();
-        maxPlayers = config.getInt("config.invisibleMaxPlayersAllowed");
-    }
-
-    private class PreLoginListener implements Listener {
-
-        private final SlotManager plugin;
-
-        PreLoginListener(SlotManager plugin) {
-            this.plugin = plugin;
-        }
-
-        @EventHandler(priority = EventPriority.HIGHEST)
-        public void onLogin(PlayerPreLoginEvent e) {
-            if (e.getResult() == PlayerPreLoginEvent.Result.KICK_FULL && plugin.maxPlayers < plugin.getServer().getOnlinePlayers().length) {
-                e.allow();
-            }
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onLogin(PlayerLoginEvent e) {
+        if (e.getResult() == PlayerLoginEvent.Result.KICK_FULL && maxPlayers < getServer().getOnlinePlayers().length) {
+            e.allow();
         }
     }
 
-    private class LoginListener implements Listener {
-
-        private final SlotManager plugin;
-
-        LoginListener(SlotManager plugin) {
-            this.plugin = plugin;
-        }
-
-        @EventHandler(priority = EventPriority.HIGHEST)
-        public void onLogin(PlayerLoginEvent e) {
-            if (e.getResult() == PlayerLoginEvent.Result.KICK_FULL && plugin.maxPlayers < plugin.getServer().getOnlinePlayers().length) {
-                e.allow();
-            }
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onLogin(PlayerPreLoginEvent e) {
+        if (e.getResult() == PlayerPreLoginEvent.Result.KICK_FULL && maxPlayers < getServer().getOnlinePlayers().length) {
+            e.allow();
         }
     }
-
 }
